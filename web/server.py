@@ -26,6 +26,43 @@ def get_users():
         data.append(user)
     return Response(json.dumps(data, cls=connector.AlchemyEncoder), mimetype='application/json')
 
+# Create
+@app.route('/users', methods = ['POST'])
+def create_user():
+    c =  json.loads(request.form['values'])
+    user = entities.User(
+        username=c['username'],
+        name=c['name'],
+        fullname=c['fullname'],
+        password=c['password']
+    )
+    session = db.getSession(engine)
+    session.add(user)
+    session.commit()
+    return 'Created User'
+
+# Update
+@app.route('/users', methods = ['PUT'])
+def update_user():
+    session = db.getSession(engine)
+    id = request.form['key']
+    user = session.query(entities.User).filter(entities.User.id == id).first()
+    c =  json.loads(request.form['values'])
+    for key in c.keys():
+        setattr(user, key, c[key])
+    session.add(user)
+    session.commit()
+    return 'Updated User'
+# Borrar
+@app.route('/users', methods = ['DELETE'])
+def delete_message():
+    id = request.form['key']
+    session = db.getSession(engine)
+    messages = session.query(entities.User).filter(entities.User.id == id)
+    for message in messages:
+        session.delete(message)
+    session.commit()
+    return "Deleted Message"
 
 @app.route('/users/<id>', methods = ['GET'])
 def get_user(id):
