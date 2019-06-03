@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat login</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+</head>
+<body>
+<form method="POST" action="/authenticate">
+    <table>
+        <tr>
+            <td>Username</td>
+            <td><input type="text" name="username" id="username"/></td>
+        </tr>
+        <tr>
+            <td>Password</td>
+            <td><input type="password" name="password" id="password"/></td>
+        </tr>
+        <tr>
+            <td cospan="2">
+                <input type="button" value="Login" onclick="getData()" />
+            </td>
+        </tr>
+    </table>
+</form>
+<script>
+    function getData() {
+        //var username = document.getElementById("username");
+        var username = $('#username').val();
+        var password = $('#password').val();
+
+        var json = "{ username: " + username + ", password: " + password + "}";
+
+        var message = JSON.stringify({
+                        "username": username,
+                        "password": password
+                        });
+        //alert(json);
+        alert(message);
+    }
+</script>
+</body>
+</html>
