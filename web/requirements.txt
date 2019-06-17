@@ -1,1 +1,3 @@
 Flask==1.0.2
+SQLAlchemy==1.3.4
+wolframalpha=3.0.1

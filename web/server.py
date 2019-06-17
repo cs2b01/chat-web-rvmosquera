@@ -3,9 +3,12 @@ from database import connector
 from model import entities
 import datetime
 import json
+import time
+import wolframalpha
 
 db = connector.Manager()
 engine = db.createEngine()
+client = wolframalpha.Client('5K78RQ-RJQQ7PXU9J')
 
 app = Flask(__name__)
 
@@ -13,29 +16,25 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
-@app.route('/authenticate', methods=['POST'])
+@app.route('/authenticate', methods = ["POST"])
 def authenticate():
-    #1Get data from request
-    username = request.form['username']
-    password = request.form['password']
-
-    #2.Get users from database
+    time.sleep(3)
+    message = json.loads(request.data)
+    username = message['username']
+    password = message['password']
+    #2. look in database
     db_session = db.getSession(engine)
-    """users = db_session.query(entities.User);
-
-    for user in users:
-        if user.username == username and user.password == password:
-            return render_template("success.html")"""
-
     try:
         user = db_session.query(entities.User
-                ).filter(entities.User.username == username
-                ).filter(entities.User.password == password
+            ).filter(entities.User.username == username
+            ).filter(entities.User.password == password
             ).one()
-
-        return render_template("success.html")
+        session['logged_user'] = user.id
+        message = {'message': 'Authorized'}
+        return Response(message, status=200, mimetype='application/json')
     except Exception:
-        return render_template("fail.html")
+        message = {'message': 'Unauthorized'}
+        return Response(message, status=401, mimetype='application/json')
 
 @app.route('/static/<content>')
 def static_content(content):
@@ -153,6 +152,71 @@ def create_test_users():
     db_session.add(user)
     db_session.commit()
     return "Test user created!"
+
+@app.route('/conversation/<user_from_id>/<user_to_id>', methods = ['GET'])
+def get_conversation(user_from_id, user_to_id ):
+    db_session = db.getSession(engine)
+    messSent = db_session.query(entities.Message).filter(
+        entities.Message.user_from_id == user_from_id).filter(
+        entities.Message.user_to_id == user_to_id
+    )
+    messReceived = db_session.query(entities.Message).filter(
+        entities.Message.user_from_id == user_to_id).filter(
+        entities.Message.user_to_id == user_from_id
+    )
+    messages = messSent.union(messReceived)
+    data = []
+    for message in messages:
+        data.append(message)
+    return Response(json.dumps(data, cls=connector.AlchemyEncoder), mimetype='application/json')
+
+@app.route('/gabriel/messages', methods = ["POST"])
+def create_message_from_chat():
+    data = json.loads(request.data)
+    user_to_id = data['user_to_id']
+    user_from_id = data['user_from_id']
+    content = data['content']
+
+    message = entities.Message(
+    user_to_id = user_to_id,
+    user_from_id = user_from_id,
+    content = content)
+
+    #2. Save in database
+    db_session = db.getSession(engine)
+    db_session.add(message)
+
+    if user_to_id == 5: #Wolfram Alpha
+        query = str(content)
+        res = client.query(query)
+        output = next(res.results).text
+        message_api = entities.Message(
+                user_to_id = user_from_id,
+                user_from_id = user_to_id,
+                content = output)
+        db_session.add(message_api)
+
+    db_session.commit()
+
+    response = {'message': 'created'}
+    return Response(json.dumps(response, cls=connector.AlchemyEncoder), status=200, mimetype='application/json')
+
+@app.route('/current', methods = ["GET"])
+def current_user():
+    db_session = db.getSession(engine)
+    user = db_session.query(entities.User).filter(
+        entities.User.id == session['logged_user']
+        ).first()
+    return Response(json.dumps(
+            user,
+            cls=connector.AlchemyEncoder),
+            mimetype='application/json'
+        )
+
+@app.route('/logout', methods = ["GET"])
+def logout():
+    session.clear()
+    return render_template('index.html')
 
 if __name__ == '__main__':
     app.secret_key = ".."

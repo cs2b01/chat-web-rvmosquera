@@ -1,6 +1,10 @@
 $(function(){
     var url = "http://127.0.0.1:8080/users";
 
+    var existMail = function(email) {
+        return email.indexOf(email.trim()) >= 0;
+    };
+
 
     $("#grid").dxDataGrid({
         dataSource: DevExpress.data.AspNet.createStore({
